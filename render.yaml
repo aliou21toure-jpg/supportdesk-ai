@@ -1,0 +1,38 @@
+# Render Blueprint: Postgres + Key Value (Redis-compatible) + API + background worker.
+databases:
+  - name: supportdesk-db
+    databaseName: supportdesk
+    user: supportdesk
+
+services:
+  - type: keyvalue
+    name: supportdesk-redis
+    ipAllowList: []   # private network only
+
+  - type: web
+    name: supportdesk-api
+    runtime: docker
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: supportdesk-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: supportdesk-redis, property: connectionString }
+      - key: AGENT_API_KEY
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false   # paste your key in the dashboard
+
+  - type: worker
+    name: supportdesk-worker
+    runtime: docker
+    dockerCommand: python -m app.worker
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: supportdesk-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: supportdesk-redis, property: connectionString }
+      - key: AGENT_API_KEY
+        fromService: { type: web, name: supportdesk-api, envVarKey: AGENT_API_KEY }
+      - key: ANTHROPIC_API_KEY
+        sync: false

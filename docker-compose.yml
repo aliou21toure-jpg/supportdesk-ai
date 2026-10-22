@@ -1,0 +1,42 @@
+# docker compose up --build   →   API docs at http://localhost:8000/docs
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: supportdesk
+      POSTGRES_PASSWORD: supportdesk
+      POSTGRES_DB: supportdesk
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supportdesk"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  api:
+    build: .
+    env_file: [{ path: .env, required: false }]
+    environment: &env
+      DATABASE_URL: postgresql+psycopg://supportdesk:supportdesk@db:5432/supportdesk
+      REDIS_URL: redis://redis:6379/0
+      AGENT_API_KEY: local-dev-agent-key-0001
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+
+  worker:
+    build: .
+    command: ["python", "-m", "app.worker"]
+    env_file: [{ path: .env, required: false }]   # put ANTHROPIC_API_KEY here to use Claude
+    environment: *env
+    depends_on: [api, redis]
+
+volumes:
+  pgdata:
