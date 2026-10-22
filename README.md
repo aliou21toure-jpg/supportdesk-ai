@@ -6,6 +6,8 @@ A customer-support ticketing API where **every new ticket is triaged by AI in a 
 category, priority, sentiment, a summary for the agent, and a draft reply grounded in the
 company's knowledge base. Agents review and send the draft, or write their own.
 
+![A ticket is submitted, the card number is redacted before the AI call, and the worker returns category, priority and a draft reply](docs/demo.png)
+
 ## How it works
 
 ```
